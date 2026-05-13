@@ -53,7 +53,7 @@ services:
 
   # ── Serveur attaquant (collecteur de cookies) ────────────────
   attacker:
-    build: ./attacker
+    build: ./attacker-server
     container_name: uni_attacker
     ports:
       - "8888:80"
