@@ -38,7 +38,7 @@ p01-xss-universite/
 
 ---
 
-## 🚀 Lancement 
+## 🚀 Lancement (< 5 minutes)
 
 ### Prérequis
 

