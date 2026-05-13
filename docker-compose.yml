@@ -1,0 +1,69 @@
+version: '3.8'
+
+# =============================================================
+#  P01 — XSS Stocké · Plateforme Universitaire
+#  EMINES UM6P · 2026
+#
+#  Services :
+#    - app      : Application web PHP (port 8080)
+#    - db       : Base de données MySQL 8 (port 3306)
+#    - attacker : Serveur collecteur de cookies (port 8888)
+# =============================================================
+
+services:
+
+  # ── Application cible ──────────────────────────────────────
+  app:
+    build: ./app
+    container_name: uni_app
+    ports:
+      - "8080:80"
+    environment:
+      DB_HOST: db
+      DB_NAME: universite
+      DB_USER: root
+      DB_PASS: root2026
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - uni-net
+    restart: unless-stopped
+
+  # ── Base de données MySQL ────────────────────────────────────
+  db:
+    image: mysql:8.0
+    container_name: uni_db
+    environment:
+      MYSQL_ROOT_PASSWORD: root2026
+      MYSQL_DATABASE: universite
+    volumes:
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+      - db_data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-proot2026"]
+      interval: 5s
+      timeout: 10s
+      retries: 10
+    networks:
+      - uni-net
+    restart: unless-stopped
+
+  # ── Serveur attaquant (collecteur de cookies) ────────────────
+  attacker:
+    build: ./attacker
+    container_name: uni_attacker
+    ports:
+      - "8888:80"
+    networks:
+      - uni-net
+    restart: unless-stopped
+
+networks:
+  uni-net:
+    driver: bridge
+
+volumes:
+  db_data:
