@@ -26,13 +26,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $corps   = trim($_POST['corps'] ?? '');  // ⚠️ PAS DE SANITISATION DU CORPS
 
     if ($dest_id && $sujet !== '' && $corps !== '') {
-        // ⚠️ VULNÉRABILITÉ : le corps est stocké tel quel en base de données
-        //    sans aucun filtre ni échappement du contenu HTML/JavaScript
+        // ✅ CORRIGÉ : échapper le corps avant stockage (défense en profondeur)
+        //    Même si l'affichage est déjà sécurisé, on nettoie aussi à l'entrée.
+        $corpsSafe = htmlspecialchars($corps, ENT_QUOTES, 'UTF-8');
         $stmt = $pdo->prepare(
             "INSERT INTO messages (expediteur_id, destinataire_id, sujet, corps)
              VALUES (?, ?, ?, ?)"
         );
-        $stmt->execute([$uid, $dest_id, htmlspecialchars($sujet), $corps]);
+        $stmt->execute([$uid, $dest_id, htmlspecialchars($sujet, ENT_QUOTES, 'UTF-8'), $corpsSafe]);
         $success = "Message envoyé avec succès.";
     } else {
         $error = "Tous les champs sont obligatoires.";
@@ -134,15 +135,12 @@ renderHeader("Messagerie");
         <hr style="border:none;border-top:1px solid #e0e0e0;margin-bottom:1rem;">
 
         <!--
-          ╔══════════════════════════════════════════════════════════╗
-          ║  ⚠️  VULNÉRABILITÉ XSS STOCKÉ — LIGNE CI-DESSOUS       ║
-          ║  Le corps du message est injecté directement dans le    ║
-          ║  DOM sans htmlspecialchars() ni aucune sanitisation.    ║
-          ║  Tout script <script>...</script> s'exécutera ici.      ║
-          ╚══════════════════════════════════════════════════════════╝
+          ✅ CORRIGÉ : htmlspecialchars() convertit les caractères spéciaux
+          en entités HTML. <script> devient &lt;script&gt; → inoffensif.
+          ENT_QUOTES échappe aussi les guillemets simples et doubles.
         -->
         <div class="message-body" style="line-height:1.7;white-space:pre-wrap;">
-          <?= $currentMsg['corps'] ?>
+          <?= htmlspecialchars($currentMsg['corps'], ENT_QUOTES, 'UTF-8') ?>
         </div>
 
       </div>

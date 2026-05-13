@@ -9,10 +9,23 @@ define('DB_NAME', getenv('DB_NAME') ?: 'universite');
 define('DB_USER', getenv('DB_USER') ?: 'root');
 define('DB_PASS', getenv('DB_PASS') ?: 'root');
 
-// Démarrage de session
+// ✅ CORRIGÉ : Cookie de session inaccessible depuis JavaScript (HttpOnly)
+//    SameSite=Strict bloque l'envoi cross-site du cookie
 if (session_status() === PHP_SESSION_NONE) {
+    session_set_cookie_params([
+        'httponly' => true,          // ← le JS ne peut plus lire document.cookie
+        'samesite' => 'Strict',      // ← bloque CSRF cross-origin
+        'secure'   => false,         // mettre true si HTTPS
+    ]);
     session_start();
 }
+
+// ✅ CORRIGÉ : En-têtes HTTP de sécurité
+header("X-Content-Type-Options: nosniff");
+header("X-Frame-Options: DENY");
+header("X-XSS-Protection: 1; mode=block");
+// Content-Security-Policy : n'autorise les scripts que depuis la même origine
+header("Content-Security-Policy: default-src 'self'; script-src 'self'; object-src 'none';");
 
 // Connexion PDO
 try {
