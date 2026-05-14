@@ -5,7 +5,6 @@
 > ⚠️ Application volontairement vulnérable — usage pédagogique uniquement.
 > Voir [DISCLAIMER.md](DISCLAIMER.md).
 
----
 
 Les deux applications
 🎯 Application cible — app/
