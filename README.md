@@ -172,13 +172,4 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' # Protection anti-CSRF
 
 ---
 
-## 📦 Livrables
 
-- [x] Code source versionné (2 branches)
-- [x] README d'installation (< 5 min)
-- [x] `docker-compose.yml` avec 3 services
-- [x] Base de données initialisée avec données fictives
-- [x] Serveur collecteur de cookies `cookie_stealer.py` (C2)
-- [x] `DISCLAIMER.md`
-- [x] Rapport PDF
-- [x] Présentation
