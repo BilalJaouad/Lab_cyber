@@ -7,25 +7,13 @@
 
 ---
 
-## 🏗️ Architecture
-
-```
-p01-xss-universite/
-├── app/                  ← Application cible (PHP 8.2 + Apache)
-│   ├── index.php         ← Page de connexion
-│   ├── dashboard.php     ← Tableau de bord (rôle-dépendant)
-│   ├── notes.php         ← Relevé de notes
-│   ├── emploi_du_temps.php
-│   ├── messagerie.php    ← ⚠️  VULNÉRABLE — XSS stocké ici
-│   ├── admin.php         ← Panneau admin
-│   ├── config.php        ← Connexion BDD
-│   └── layout.php        ← Template HTML commun
-├── db/
-│   └── init.sql          ← Schéma + données de test
-├── attacker/
-│   └── collector.php     ← Interface C2 + collecteur de cookies
-├── docker-compose.yml
-└── DISCLAIMER.md
+Les deux applications
+🎯 Application cible — app/
+Il s'agit d'une plateforme universitaire fictive UniPortail, simulant un environnement réel avec trois niveaux de rôles (Administrateur, Professeur, Étudiant). Elle contient une vulnérabilité XSS stockée intentionnelle dans le module de messagerie : les messages ne sont ni filtrés à l'enregistrement ni échappés à l'affichage, ce qui permet l'injection de code JavaScript malveillant.
+Accessible sur : http://localhost:8080
+💀 Serveur attaquant — attacker-server/
+Il s'agit du Command & Control (C2) de l'attaquant. Il reçoit et affiche les cookies de session volés via le payload XSS. C'est ici que l'attaquant récupère le PHPSESSID de la victime pour usurper son identité.
+Accessible sur : http://localhost:8888
 ```
 
 ## 👥 Hiérarchie des rôles
